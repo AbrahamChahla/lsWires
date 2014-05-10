@@ -11,6 +11,9 @@ We are starting out with the following:
 lsWire.button.changeIcon<br/>
 lsWire.button.renderAsIcon<br/>
 
+**Enhancements to input controls/elements**<br/>
+lsWire.input.characterLimit<br/>
+
 **Enhancements to list/table controls**<br/>
 lsWire.list.itemTap<br/>
 lsWire.list.selectAll<br/>
