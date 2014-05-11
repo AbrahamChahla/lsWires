@@ -28,12 +28,9 @@ window.lsWire = window.lsWire || {};
 
 	window.lsWire.button = {
 
-		// *****************************************************************************************************
-		// *****************************************************************************************************
+		// =================================================================================================
 		// Change the icon of a button
-		//		element, currentIconClass, newIconClass
-		// *****************************************************************************************************
-		// *****************************************************************************************************
+		// =================================================================================================
 		changeIcon: (function (element, currentIconClass, newIconClass) {
 
 			/// <summary>Change the icon of a button</summary>
@@ -50,7 +47,6 @@ window.lsWire = window.lsWire || {};
 
 		// ==========================================================================================
 		// Quick little function to convert a standard button to Iconic button
-		// Added here for this targeted example, is typically part of the itgLs library
 		// ==========================================================================================
 		renderAsIcon: function (element, contentItem, icon, noText) {
 
@@ -99,6 +95,7 @@ window.lsWire = window.lsWire || {};
 			$(element).closest('.msls-leaf').removeClass('msls-leaf');
 
 		}
+
 	};
 
 	window.lsWire.input = {
@@ -217,46 +214,9 @@ window.lsWire = window.lsWire || {};
 
 		}
 
-
 	};
 
 	window.lsWire.list = {
-
-		// ============================================================================================
-		// Functionality to enhance a ListView/TileView/TableView for multiple selects
-		// ============================================================================================
-		//
-		// Enhancing a list controls ItemTap, allowing for selection of multiple items 
-		// Very efficient vs using the dataBind method as the number of calls are greatly reduced
-		// Selection is list specific, allowing for multiple lists on the same screen to have
-		// enhanced selection capability.
-		// Also allows for toggling selection of an item by tapping/clicking on a selected item
-		//
-		// Requirments:  Screen contentItem must be either a TileList or List
-		//
-		// Parameters:
-		//		contentItem - screen.contentItem of the list
-		//		totalSelectionsAllowed - total number of item selections allowed
-		//							Can be null or undefined for unlimited selections
-		//							Can also be set on the contentItem directly
-		//
-		// Example:
-		//
-		//		Following would allow for unlimited selections
-		//		var dogsList = screen.contentItem("Dogs")
-		//		enhancedListItemTap(dogsList)
-		//
-		//		Following will only allow 3 items to be selected
-		//		var catsList = screen.contentItem("Cats")
-		//		enhancedListItemTap(catsList, 3)
-		//		
-		//
-		// ============================================================================================
-		// Note that I have started to go down the path of using native JavaScript functions
-		// vs jQuery whenever possible.  The native functions are much faster with little loss in
-		// functionality.  
-		// ============================================================================================
-
 
 		// ============================================================================================
 		// jqf - Meat of the functionality, pass the list contentItem and number of selections that are allowed
@@ -273,7 +233,12 @@ window.lsWire = window.lsWire || {};
 
 			if (contentItem != null && contentItem._view != null && contentItem._view._container != null) {
 
-				var controlClass = contentItem.model.view.id === ":Table" ? ".msls-table" : ".msls-listview";
+				// Setup our variables based on control type
+				var controlId = contentItem.model.view.id;
+				var controlClass = controlId === ":Table" ? ".msls-table" : ".msls-listview";
+				var lsSelector = controlId === ":Table" ? "tbody tr.ui-btn-active" : "ul li.ui-btn-active";
+				var lsWireSelectedClass = "lswire-selected-item";
+				var lsWireSelector = controlId === ":Table" ? "tbody tr.lswire-selected-item" : "ul li.lswire-selected-item";
 
 				// Make sure we have a default allowed count, which is single
 				if (contentItem.totalSelectionsAllowed === undefined)
@@ -283,7 +248,7 @@ window.lsWire = window.lsWire || {};
 				var listView = contentItem._view._container[0].querySelector(controlClass);
 
 				// Get the currently tapped item, in this listview only
-				var item = listView.querySelector('.ui-btn-active');
+				var item = listView.querySelector(lsSelector);
 
 				// Not likely, but make sure there is an item
 				if (item) {
@@ -292,9 +257,9 @@ window.lsWire = window.lsWire || {};
 					if (contentItem.totalSelectionsAllowed === null || contentItem.totalSelectionsAllowed > 1) {
 
 						// If the selected item already was selected, unselect (nullify) the item
-						if (item.classList.contains('lswire-selected-item')) {
+						if (item.classList.contains(lsWireSelectedClass)) {
 							contentItem.screen[contentItem.name].selectedItem = null;
-							item.classList.remove('lswire-selected-item');
+							item.classList.remove(lsWireSelectedClass);
 							item.classList.remove('ui-focus');
 
 							// If the tapped item does not have our custom class showing selected, add it
@@ -303,11 +268,11 @@ window.lsWire = window.lsWire || {};
 							// Get the current count of selected items
 							var selectedCount = 0;
 							if (contentItem.totalSelectionsAllowed !== null)
-								selectedCount = listView.querySelectorAll('.lswire-selected-item').length;
+								selectedCount = listView.querySelectorAll(lsWireSelector).length;
 
 							// If less than the total allowed add the class
 							if (contentItem.totalSelectionsAllowed === null || selectedCount < contentItem.totalSelectionsAllowed) {
-								item.classList.add('lswire-selected-item');
+								item.classList.add(lsWireSelectedClass);
 
 								// Already hit the limit, unselect this item
 							} else {
@@ -320,18 +285,18 @@ window.lsWire = window.lsWire || {};
 					} else {
 
 						// If the selected item already was selected, unselect (nullify) the item
-						if (item.classList.contains('lswire-selected-item')) {
+						if (item.classList.contains(lsWireSelectedClass)) {
 							contentItem.screen[contentItem.name].selectedItem = null;
-							item.classList.remove('lswire-selected-item');
+							item.classList.remove(lsWireSelectedClass);
 							item.classList.remove('ui-focus');
 
 							// Not selected already, so remove any previous selection, and add to this one
 						} else {
-							var prevItem = listView.querySelector('.lswire-selected-item');
+							var prevItem = listView.querySelector(lsWireSelector);
 							if (prevItem !== null)
-								prevItem.classList.remove('lswire-selected-item');
+								prevItem.classList.remove(lsWireSelectedClass);
 
-							item.classList.add('lswire-selected-item');
+							item.classList.add(lsWireSelectedClass);
 						}
 					}
 				}
@@ -353,12 +318,13 @@ window.lsWire = window.lsWire || {};
 			var _data = [];
 
 			if (contentItem != null && contentItem._view !== null && contentItem._view._container !== null) {
-				var controlClass = contentItem.model.view.id === ":Table"
-					? ".msls-table .lswire-selected-item"
-					: ".msls-listview .lswire-selected-item";
+
+				// Setup our variables based on control type
+				var controlId = contentItem.model.view.id;
+				var lsWireSelector = controlId === ":Table" ? "tbody tr.lswire-selected-item" : "ul li.lswire-selected-item";
 
 				// Get all the items that have our custom class signifying selection
-				var selected = contentItem._view._container[0].querySelectorAll(controlClass);
+				var selected = contentItem._view._container[0].querySelectorAll(lsWireSelector);
 
 				// Go get the entity data for each selected item, add to the data array
 				_.forEach(selected, function (item) {
@@ -388,18 +354,18 @@ window.lsWire = window.lsWire || {};
 
 			if (contentItem != null && contentItem._view !== null && contentItem._view._container !== null) {
 
-				// What is the control type... which drives how the items are created
-				var selector = contentItem.model.view.id === ":Table"
-					? ".msls-table .lswire-selected-item"
-					: ".msls-listview .lswire-selected-item";
+				// Setup our variables based on control type
+				var controlId = contentItem.model.view.id;
+				var lsWireSelectedClass = "lswire-selected-item";
+				var lsWireSelector = controlId === ":Table" ? "tbody tr.lswire-selected-item" : "ul li.lswire-selected-item";
 
 				// Get all the items that have our selected class
-				var allItems = contentItem._view._container[0].querySelectorAll(selector);
+				var allItems = contentItem._view._container[0].querySelectorAll(lsWireSelector);
 
 				// Loop over them all and remove our class
 				_.forEach(allItems, function (item) {
-					if (item.classList.contains('lswire-selected-item'))
-						item.classList.remove('lswire-selected-item');
+					if (item.classList.contains(lsWireSelectedClass))
+						item.classList.remove(lsWireSelectedClass);
 					if (item.classList.contains('ui-focus'))
 						item.classList.remove('ui-focus');
 				});
@@ -423,9 +389,10 @@ window.lsWire = window.lsWire || {};
 				if (contentItem.totalSelectionsAllowed === undefined || contentItem.totalSelectionsAllowed === null) {
 
 					// What is the control type... which drives how the items are created
+					var lsWireSelectedClass = "lswire-selected-item";
 					var selector = contentItem.model.view.id === ":Table"
-						? ".msls-table .msls-tr"
-						: ".msls-listview .msls-li";
+						? "tbody tr"
+						: "ul li";
 
 					// Get the listview container... then query for all our selected items
 					var allItems = contentItem._view._container[0].querySelectorAll(selector);
@@ -434,8 +401,8 @@ window.lsWire = window.lsWire || {};
 					_.forEach(allItems, function (item) {
 
 						// If the item has not already been selected, add the class
-						if (!item.classList.contains('lswire-selected-item'))
-							item.classList.add('lswire-selected-item');
+						if (!item.classList.contains(lsWireSelectedClass))
+							item.classList.add(lsWireSelectedClass);
 					});
 				}
 
@@ -456,13 +423,13 @@ window.lsWire = window.lsWire || {};
 
 			if (contentItem != null && contentItem._view !== null && contentItem._view._container !== null) {
 
-				// What is the control type... which drives how the items are created
-				var selector = contentItem.model.view.id === ":Table"
-					? ".msls-table .lswire-selected-item"
-					: ".msls-listview .lswire-selected-item";
+				// Setup our variables based on control type
+				var controlId = contentItem.model.view.id;
+				var lsWireSelector = controlId === ":Table" ? "tbody tr.itg-selected-item" : "ul li.itg-selected-item";
+
 
 				// Get the listview container... allowing independent lists on the same screen
-				_count = contentItem._view._container[0].querySelectorAll(selector).length;
+				_count = contentItem._view._container[0].querySelectorAll(lsWireSelector).length;
 
 			}
 
@@ -475,32 +442,6 @@ window.lsWire = window.lsWire || {};
 		// ============================================================================================
 
 	};
-
-
-// ============================================================================================
-// Convert a boolean to a checkbox control
-// Control in the designer should be changed to a Custom Control
-// Based on the work of the following folks, many thanks go out to them:
-//		http://jewellambert.com/using-jquery-mobile-radio-buttons-in-lightswitch/
-//		http://blogs.msdn.com/b/lightswitch/archive/2013/07/15/extending-screens-for-multi-select-in-the-lightswitch-html-client-mike-droney.aspx
-//
-//
-// options = { 
-//		text: Text you want to display to the right of the checkbox
-//		textCssClass: CSS Class you want to have the text displayed as
-//		cssClass: Parent CSS Class you want for the checkbox
-//		onChange: UDF that the system will use when the control is clicked, changed
-//			parameters: isChecked (true/false), eventObject
-//	}
-//
-// For most of folks, using the contentItem.dataBind is a better way of working with
-// value changes based on the checkbox vs the onChange.  Use the onChange when you are
-// working with a Screen Property and want to update dissimilar data field.  But then again
-// you can still use the contentItem.dataBind.  So the onChange may go away.
-//
-// ============================================================================================
-// There can be a lot more error checking, but this is free... so figure it out! :)
-// ============================================================================================
 
 
 	window.lsWire.checkbox = {
@@ -750,6 +691,9 @@ window.lsWire = window.lsWire || {};
 
 	window.lsWire.layout = {
 
+		// ============================================================================================
+		// Helper function to render the header of a layout control
+		// ============================================================================================
 		renderHeader: function (element, contentItem, cssClass) {
 
 			/// <summary>Render a header for a layout control</summary
