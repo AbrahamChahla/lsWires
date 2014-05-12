@@ -9,9 +9,9 @@ We are starting out with the following:
 
 **Enhancements to button controls/elements**<br/>
 lsWire.button.changeIcon
-<span style="padding-left: 30px;">Change the icon of an existing iconic button</span>
+<div style="padding-left: 30px;">Change the icon of an existing iconic button</div>
 lsWire.button.renderAsIcon
-<span style="padding-left: 30px;">Render a standard button as an iconic button<span>
+<div style="padding-left: 30px;">Render a standard button as an iconic button</div>
 
 **Enhancements to input controls/elements**<br/>
 lsWire.input.characterLimit<br/>
