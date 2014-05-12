@@ -900,13 +900,35 @@ window.lsWire = window.lsWire || {};
 
 			/// <summary>Find the parent of an element that matches a tag name</summary>
 			/// <param name="element" type="object">DOM Element</param>
-			/// <param name="tagName" type="string">Tag name to location</param>
+			/// <param name="tagName" type="string">Tag name to locate</param>
 			/// <returns type="object">DOM element or null if not found</returns>
 
 			var foundElement = element;
 			tagName = tagName.toUpperCase();
 
 			while (foundElement && foundElement.tagName !== tagName) {
+				foundElement = foundElement.parentElement;
+			}
+
+			return foundElement;
+
+		},
+
+
+		// ============================================================================================
+		// Helper function find the parent that matches a class name
+		// ============================================================================================
+		findParentByClassName: function (element, className) {
+
+			/// <summary>Find the parent of an element that matches a class name</summary>
+			/// <param name="element" type="object">DOM Element</param>
+			/// <param name="className" type="string">Class name to locate</param>
+			/// <returns type="object">DOM element or null if not found</returns>
+
+			var foundElement = element;
+			tagName = tagName.toUpperCase();
+
+			while (foundElement && !foundElement.classList.contains(className)) {
 				foundElement = foundElement.parentElement;
 			}
 

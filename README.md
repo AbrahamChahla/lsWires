@@ -1,25 +1,33 @@
 
-# lsWire
+# lsWires
 
 ### Wiring up Visual Studio LightSwitch to help with your daily tasks!
 
-lsWire is a work in progress with new functionality being added all the time.  In fact we are starting a consolidation effort with all of our projects into this unified library.  As with any refactoring/consolidation efforts, this may break some current implementations.  
+lsWires is a work in progress with new functionality being added all the time.  In fact we are starting a consolidation effort with all of our projects into this unified library.  As with any refactoring/consolidation efforts, this may break some current implementations.  
 
 We are starting out with the following:
 
 **Enhancements to button controls/elements**<br/>
-lsWire.button.changeIcon<br/>
-lsWire.button.renderAsIcon<br/>
+lsWire.button.changeIcon
+<span style="padding-left: 30px;">Change the icon of an existing iconic button</span>
+lsWire.button.renderAsIcon
+<span style="padding-left: 30px;">Render a standard button as an iconic button<span>
 
 **Enhancements to input controls/elements**<br/>
 lsWire.input.characterLimit<br/>
+lsWire.input.updateCharacterCountLabel<br/>
 
 **Enhancements to list/table controls**<br/>
-lsWire.list.itemTap<br/>
+<s>lsWire.list.itemTap</s><br/>
+<s>lsWire.list.unselectAll</s><br/>
+lsWire.list.enableMultiSelect<br/>
+lsWire.list.reslect<br/>
+lsWire.list.selected<br/>
 lsWire.list.selectAll<br/>
-lsWire.list.unselectAll<br/>
 lsWire.list.selectedCount<br/>
 lsWire.list.selected<br/>
+lsWire.list.totalSelectionsAllowed<br/>
+lsWire.list.persistSelections<br/>
 
 **Providing checkbox functionality**<br/>
 lsWire.checkbox.render<br/>
@@ -31,6 +39,12 @@ lsWire.checkbox.initializeCss<br/>
 
 **Enhancements to Layout controls**<br/>
 lsWire.layout.renderHeader<br/>
+
+**Utility Helpers**<br/>
+lsWire.utility.findParentByTagName<br/>
+lsWire.utility.findParentByClassName<br/>
+lsWire.utility.createProperty<br/>
+
 
 The code is heavily commented along with full intellisense.  We also have tutorials on the blog to help with learning how to implement these enhancements.
 
