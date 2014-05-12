@@ -1,6 +1,6 @@
 ﻿// ============================================================================================
 // ============================================================================================
-// lsWire.js
+// lsWires.js
 //
 // Library that enhances development with LightSwitch 2013 HTML Projects
 // This will be a full rewrite of an earlier version and a consolidation from a number
@@ -16,6 +16,7 @@
 // 
 // http://blog.ofAnITGuy.com
 // 
+// 5-12-2014 -	Major rewrite of most modules, especially the Multi-Select
 // 5-10-2014 -	Changed name to lsWire
 //				Added input.characterLimit
 // ============================================================================================
@@ -101,7 +102,7 @@ window.lsWire = window.lsWire || {};
 	window.lsWire.input = {
 
 		// =================================================================================================
-		// jqf - Enhance an input controls associated label to show a realtime character count
+		// Enhance an input controls associated label to show a realtime character count
 		// =================================================================================================
 		characterLimit: function (contentItem, maxLength, options) {
 
@@ -176,6 +177,7 @@ window.lsWire = window.lsWire || {};
 						// Going forward with new character or backspacing, don't process if just arrow keys
 						if (e.keyCode !== 37 && e.keyCode !== 38 && e.keyCode !== 39 && e.keyCode !== 40) {
 
+							// keycode 8 is backspace
 							var nextLength = e.keyCode === 8
 								? e.target.value.length - 1
 								: e.target.value.length + 1;
@@ -197,7 +199,7 @@ window.lsWire = window.lsWire || {};
 
 
 			// =================================================================================================
-			// jqf - Helper function to update an input elements label with our character count template
+			// Helper function to update an input elements label with our character count template
 			// =================================================================================================
 			var updateCharacterCountLabel = function (label, displayName, value, maxLength, template) {
 
@@ -218,92 +220,206 @@ window.lsWire = window.lsWire || {};
 
 	window.lsWire.list = {
 
-		// ============================================================================================
-		// jqf - Meat of the functionality, pass the list contentItem and number of selections that are allowed
-		// ============================================================================================
-		itemTap: function (contentItem, totalSelectionsAllowed) {
+		// ==========================================================================================
+		// Enable multi-item selections for a list/table
+		// ==========================================================================================
+		enableMultiSelect: function (contentItem, options) {
 
-			/// <summary>Enhance a list/table item tap to allow multi-item selection</summary>
+			/// <summary>Enable Multi-Item selection on a list/table</summary>
 			/// <param name="contentItem" type="object">Screen contentItem of the list/table control</param>
-			/// <param name="totalSelectionsAllowed" type="integer">Optional<br />
-			/// Maximum number of items that can be selected<br />
-			/// Defaults to unlimited<br/>
+			/// <param name="options" type="object">Optional<br />
+			/// {<br/>
+			/// totalAllowedSelections: integer - Maximum number of items that can be selected<br />
+			/// persistSelections: boolean - Whether to persist selections for this session<br/>
+			/// }<br/>
+			/// Defaults to unlimited selctions and do not persist session selections<br/>
 			/// null or undefined will allow for unlimited selections.
 			/// </param>
 
-			if (contentItem != null && contentItem._view != null && contentItem._view._container != null) {
+			// Make sure there is a contentItem
+			if (contentItem !== undefined && contentItem._view != null && contentItem._view._container != null) {
 
-				// Setup our variables based on control type
+				// Make sure we have a properties location
+				contentItem.lsWire = contentItem.lsWire || {};
+				var lsw = contentItem.lsWire;
+
+				// Setup our properties making it easier to work with selections
 				var controlId = contentItem.model.view.id;
-				var controlClass = controlId === ":Table" ? ".msls-table" : ".msls-listview";
-				var lsSelector = controlId === ":Table" ? "tbody tr.ui-btn-active" : "ul li.ui-btn-active";
-				var lsWireSelectedClass = "lswire-selected-item";
-				var lsWireSelector = controlId === ":Table" ? "tbody tr.lswire-selected-item" : "ul li.lswire-selected-item";
+				lsw.controlClass = controlId === ":Table" ? ".msls-table tbody" : ".msls-listview";
+				lsw.itemTagName = controlId === ":Table" ? "tr" : "li";
+				lsw.lsWireSelectedClass = "lswire-selected-item";
+				lsw.lsWireSelector = controlId === ":Table" ? "tbody tr.lswire-selected-item" : "ul li.lswire-selected-item";
+				lsw.lsSelector = controlId === ":Table" ? "tbody tr.ui-btn-active" : "ul li.ui-btn-active";
+				lsw.listView = contentItem._view._container[0].querySelector(lsw.controlClass);
 
-				// Make sure we have a default allowed count, which is single
-				if (contentItem.totalSelectionsAllowed === undefined)
-					contentItem.totalSelectionsAllowed = totalSelectionsAllowed || null;
+				// Default our passed options
+				options = options || {};
+				lsw.totalSelectionsAllowed = options.totalSelectionsAllowed || null;
 
-				// Get the listview container... allowing independent lists on the same screen
-				var listView = contentItem._view._container[0].querySelector(controlClass);
+				// Look for an existing persistence setting... create our Id
+				lsw.persistId = contentItem.screen.details._modelId + "_Persist" + contentItem.name + "Selections";
 
-				// Get the currently tapped item, in this listview only
-				var item = listView.querySelector(lsSelector);
+				// Do we have one set already?
+				if (myapp.options[lsw.persistId] === undefined) {
+					myapp.options[lsw.persistId] = options.persistSelections == undefined
+						? false
+						: options.persistSelections;
+				}
 
-				// Not likely, but make sure there is an item
-				if (item) {
+				lsw.persistSelections = myapp.options[lsw.persistId];
 
-					// If number of selects is multiple, then go!
-					if (contentItem.totalSelectionsAllowed === null || contentItem.totalSelectionsAllowed > 1) {
+				// Setup our listener for item taps
+				lsw.listView.addEventListener('click', function (event) {
 
-						// If the selected item already was selected, unselect (nullify) the item
-						if (item.classList.contains(lsWireSelectedClass)) {
-							contentItem.screen[contentItem.name].selectedItem = null;
-							item.classList.remove(lsWireSelectedClass);
-							item.classList.remove('ui-focus');
+					// Get the container tag
+					var itemElement = lsWire.utility.findParentByTagName(event.target, lsw.itemTagName);
 
-							// If the tapped item does not have our custom class showing selected, add it
-						} else {
+					// If no parent match, we are done
+					if (itemElement != undefined) {
 
-							// Get the current count of selected items
-							var selectedCount = 0;
-							if (contentItem.totalSelectionsAllowed !== null)
-								selectedCount = listView.querySelectorAll(lsWireSelector).length;
+						// Don't allow default handling
+						event.stopPropagation();
 
-							// If less than the total allowed add the class
-							if (contentItem.totalSelectionsAllowed === null || selectedCount < contentItem.totalSelectionsAllowed) {
-								item.classList.add(lsWireSelectedClass);
+						// Execute our own itemTap
+						itemTap(contentItem, itemElement);
 
-								// Already hit the limit, unselect this item
-							} else {
-								contentItem.screen[contentItem.name].selectedItem = null;
-								item.classList.remove('ui-focus');
-							}
-						}
+						// Execute the users itemTap
+						if (contentItem._view.underlyingControl.itemTap != undefined)
+							contentItem._view.underlyingControl.itemTap.execute();
+					};
+				});
 
-						// Only 1 selection is allowed
+			}
+
+			// ============================================================================================
+			// Internal - Meat of the functionality, pass the list contentItem and tapped item
+			// ============================================================================================
+			function itemTap(contentItem, item) {
+
+				/// <summary>Enhance a list/table item tap to allow multi-item selection</summary>
+				/// <param name="contentItem" type="object">Screen contentItem of the list/table control</param>
+				/// <param name="totalSelectionsAllowed" type="integer">Optional<br />
+				/// Maximum number of items that can be selected<br />
+				/// Defaults to unlimited<br/>
+				/// null or undefined will allow for unlimited selections.
+				/// </param>
+
+				// Short cut to our properties
+				//var lsw = contentItem.lsWire;
+
+				// Get the hook into our data for this item
+				var itemData = $.cache[item[$.expando]].data.__entity;
+
+				// If number of selects is multiple, then go!
+				if (lsw.totalSelectionsAllowed === null || lsw.totalSelectionsAllowed > 1) {
+
+					// If the selected item already was selected, unselect (nullify) the item
+					if (item.classList.contains(lsw.lsWireSelectedClass)) {
+
+						contentItem.screen[contentItem.name].selectedItem = null;
+						item.classList.remove(lsw.lsWireSelectedClass);
+						item.classList.remove('ui-focus');
+						if (lsw.persistSelections)
+							itemData.lsWireSelected = false;
+
+					// If the tapped item does not have our custom class showing selected, add it
 					} else {
 
-						// If the selected item already was selected, unselect (nullify) the item
-						if (item.classList.contains(lsWireSelectedClass)) {
-							contentItem.screen[contentItem.name].selectedItem = null;
-							item.classList.remove(lsWireSelectedClass);
-							item.classList.remove('ui-focus');
+						// Get the current count of selected items if we are showing a limit
+						var selectedCount = lsw.totalSelectionsAllowed == undefined
+							? 0
+							: lsw.listView.querySelectorAll(lsw.lsWireSelector).length;
 
-							// Not selected already, so remove any previous selection, and add to this one
+						// If less than the total allowed add the class
+						if (lsw.totalSelectionsAllowed == undefined || selectedCount < lsw.totalSelectionsAllowed) {
+
+							contentItem.screen[contentItem.name].selectedItem = itemData;
+							item.classList.add(lsw.lsWireSelectedClass);
+							if (lsw.persistSelections)
+								itemData.lsWireSelected = true;
+
+							// Already hit the limit, unselect this item
 						} else {
-							var prevItem = listView.querySelector(lsWireSelector);
-							if (prevItem !== null)
-								prevItem.classList.remove(lsWireSelectedClass);
 
-							item.classList.add(lsWireSelectedClass);
+							contentItem.screen[contentItem.name].selectedItem = null;
+							item.classList.remove('ui-focus');
+							if (lsw.persistSelections)
+								itemData.lsWireSelected = false;
 						}
 					}
+
+				// Only 1 selection is allowed, so its more of a toggle, and no we are not going DRY
+				} else {
+
+					// If the selected item already was selected, unselect (nullify) the item
+					if (item.classList.contains(lsw.lsWireSelectedClass)) {
+
+						contentItem.screen[contentItem.name].selectedItem = null;
+						item.classList.remove(lsw.lsWireSelectedClass);
+						item.classList.remove('ui-focus');
+						if (lsw.persistSelections)
+							itemData.lsWireSelected = false;
+
+						// Not selected so remove any previous selection, and add to this one
+					} else {
+
+						var prevItem = listView.querySelector(lsw.lsWireSelector);
+						if (prevItem !== null) {
+							prevItem.classList.remove(lsw.lsWireSelectedClass);
+							if (lsw.persistSelections)
+								itemData.lsWireSelected = false;
+						}
+
+						item.classList.add(lsw.lsWireSelectedClass);
+						contentItem.screen[contentItem.name].selectedItem = itemData;
+						if (lsw.persistSelections)
+							itemData.lsWireSelected = true;
+					}
 				}
-			}
+
+
+			};
+
 
 		},
 
+		// ============================================================================================
+		// Helper function to reselect an item if it was previously selected
+		// ============================================================================================
+		reselect: function (contentItem, force) {
+
+			/// <summary>Reselect a previously selected item in a list<br/>
+			/// Typically used in the post render of a row, per item</summary>
+			/// <param name="contentItem" type="object">contentItem of the actual list/table item</param>
+			/// <param name="force" type="boolean">If true, will select the item regardless of its previous state</param>
+
+			// Make sure we have an item and our variables
+			if (contentItem !== undefined && contentItem.parent.lsWire !== undefined) {
+
+				// Get our variables
+				var lsw = contentItem.parent.lsWire;
+
+				// If we are to persist selections and the item was previously selected
+				if ((lsw.persistSelections && contentItem.value.lsWireSelected) || force) {
+
+					// Get the items container
+					var item = contentItem._view._container[0];
+
+					// We need the parent when dealing with lists
+					if (contentItem.parent.model.view.id !== ":Table")
+						item = item.parentElement;
+
+					// Add back our selected class
+					item.classList.add(lsw.lsWireSelectedClass);
+
+					// If force was passed and true, make sure we persist
+					if (force)
+						contentItem.value.lsWireSelected = true;
+
+				};
+			};
+
+		},
 
 		// ============================================================================================
 		// Helper function to return an array holding the entities of all the selected items
@@ -315,133 +431,187 @@ window.lsWire = window.lsWire || {};
 			/// <returns type="array">An array of data entities</returns>
 
 			// Array to hold the data
-			var _data = [];
+			var data = [];
 
-			if (contentItem != null && contentItem._view !== null && contentItem._view._container !== null) {
+			if (contentItem != null && contentItem.lsWire !== undefined) {
 
-				// Setup our variables based on control type
-				var controlId = contentItem.model.view.id;
-				var lsWireSelector = controlId === ":Table" ? "tbody tr.lswire-selected-item" : "ul li.lswire-selected-item";
+				var lsw = contentItem.lsWire;
 
 				// Get all the items that have our custom class signifying selection
-				var selected = contentItem._view._container[0].querySelectorAll(lsWireSelector);
+				var selected = contentItem._view._container[0].querySelectorAll(lsw.lsWireSelector);
 
 				// Go get the entity data for each selected item, add to the data array
 				_.forEach(selected, function (item) {
 
-					// For efficiency, we'll use jquery to get our entity data out of the element
-					var entity = $.data(item, "__entity");
-					if (entity !== undefined) {
-						_data.push(entity);
-					}
+					// Get our data out of the jQuery cache
+					var entity = $.cache[item[$.expando]].data.__entity;
+					if (entity !== undefined)
+						data.push(entity);
 
 				});
 			}
 
 			// Return our data array
-			return _data;
+			return data;
 
 		},
 
-
 		// ============================================================================================
-		// jqf - Helper function to unselect all selected items in the list
+		// Helper function to select/unselect all items in the list
 		// ============================================================================================
-		unselectAll: function (contentItem) {
-
-			/// <summary>Unselect all items in a list/table</summary>
-			/// <param name="contentItem" type="object">Screen contentItem of the the list/table</param>
-
-			if (contentItem != null && contentItem._view !== null && contentItem._view._container !== null) {
-
-				// Setup our variables based on control type
-				var controlId = contentItem.model.view.id;
-				var lsWireSelectedClass = "lswire-selected-item";
-				var lsWireSelector = controlId === ":Table" ? "tbody tr.lswire-selected-item" : "ul li.lswire-selected-item";
-
-				// Get all the items that have our selected class
-				var allItems = contentItem._view._container[0].querySelectorAll(lsWireSelector);
-
-				// Loop over them all and remove our class
-				_.forEach(allItems, function (item) {
-					if (item.classList.contains(lsWireSelectedClass))
-						item.classList.remove(lsWireSelectedClass);
-					if (item.classList.contains('ui-focus'))
-						item.classList.remove('ui-focus');
-				});
-
-				// Nullify the selected item property
-				contentItem.screen[contentItem.name].selectedItem = null;
-			}
-		},
-
-
-		// ============================================================================================
-		// jqf - Helper function to select all items in the list
-		// ============================================================================================
-		selectAll: function (contentItem) {
+		selectAll: function (contentItem, yesNo) {
 
 			/// <summary>Select all items in a list/table if unlimited selections are allowed</summary>
 			/// <param name="contentItem" type="object">Screen contentItem of the the list/table</param>
+			/// <param name="yesNo" type="boolean">true (default) Select all, false Unselect all</param> 
 
-			if (contentItem != null && contentItem._view !== null && contentItem._view._container !== null) {
+			if (contentItem != null && contentItem.lsWire !== undefined) {
 
-				if (contentItem.totalSelectionsAllowed === undefined || contentItem.totalSelectionsAllowed === null) {
+				var lsw = contentItem.lsWire;
 
-					// What is the control type... which drives how the items are created
-					var lsWireSelectedClass = "lswire-selected-item";
-					var selector = contentItem.model.view.id === ":Table"
-						? "tbody tr"
-						: "ul li";
+				// Default is to select all, false is passed to unselect
+				if (yesNo === undefined || yesNo === true) {
 
-					// Get the listview container... then query for all our selected items
-					var allItems = contentItem._view._container[0].querySelectorAll(selector);
+					var allItems = null;
 
-					// Add our selected class to all the items
+					if (lsw.totalSelectionsAllowed === undefined || lsw.totalSelectionsAllowed === null) {
+
+						// What is the control type... which drives how the items are created
+						var selector = contentItem.model.view.id === ":Table"
+							? "tbody tr"
+							: "ul li";
+
+						// Get the listview container... then query for all items
+						allItems = contentItem._view._container[0].querySelectorAll(selector);
+
+						// Add our selected class to all the items
+						_.forEach(allItems, function (item) {
+
+							// If the item has not already been selected, add the class
+							if (!item.classList.contains(lsw.lsWireSelectedClass)) {
+								item.classList.add(lsw.lsWireSelectedClass);
+								if (lsw.persistSelections)
+									$.cache[item[$.expando]].data.__entity.lsWireSelected = true;
+
+							}
+						});
+					}
+				} else {
+
+					// Get all the items that have our selected class
+					allItems = contentItem._view._container[0].querySelectorAll(lsw.lsWireSelector);
+
+					// Loop over them all and remove our class
 					_.forEach(allItems, function (item) {
-
-						// If the item has not already been selected, add the class
-						if (!item.classList.contains(lsWireSelectedClass))
-							item.classList.add(lsWireSelectedClass);
+						item.classList.remove(lsw.lsWireSelectedClass);
+						item.classList.remove('ui-focus');
+						if (lsw.persistSelections)
+							$.cache[item[$.expando]].data.__entity.lsWireSelected = false;
 					});
+
+					// Nullify the selected item property
+					contentItem.screen[contentItem.name].selectedItem = null;
 				}
 
 			}
 		},
 
-
 		// ============================================================================================
-		// jqf - Helper function to get a count of the selected items in a list
+		// Helper function to get a count of the selected items in a list
 		// ============================================================================================
 		selectedCount: function (contentItem) {
 
 			/// <summary>Get a count of how many items have been selected</summary>
 			/// <param name="contentItem" type="object">Screen contentItem of the the list/table</param>
-			/// <returns type="integer">Count of the selected items</param>
+			/// <returns type="integer">Count of the selected items</returns>
 
-			var _count = 0;
+			var count = 0;
 
-			if (contentItem != null && contentItem._view !== null && contentItem._view._container !== null) {
-
-				// Setup our variables based on control type
-				var controlId = contentItem.model.view.id;
-				var lsWireSelector = controlId === ":Table" ? "tbody tr.itg-selected-item" : "ul li.itg-selected-item";
-
+			if (contentItem != null && contentItem.lsWire !== undefined) {
 
 				// Get the listview container... allowing independent lists on the same screen
-				_count = contentItem._view._container[0].querySelectorAll(lsWireSelector).length;
+				count = contentItem._view._container[0].querySelectorAll(contentItem.lsWire.lsWireSelector).length;
 
 			}
 
-			return _count;
+			return count;
 
-		}
+		},
 
 		// ============================================================================================
-		// End of:  Functionality to enhance a ListView/TileView/TableView for multiple selects
+		// Helper function to set the total number of allowed selections
 		// ============================================================================================
+		totalSelectionsAllowed: function (contentItem, number) {
+
+			/// <summary>Get/Set the total number of selections allowed</summary>
+			/// <param name="contentItem" type="object">Screen contentItem of the list/table</param>
+			/// <param name="number" type="integer">Optional<br/>
+			/// Number of allowed selctions<br/>
+			/// Pass a null or 0 to remove limits, undefined to retrieve</param>
+			/// <returns type="integer">Number of selections allowed or null</returns>
+
+			contentItem.lsWire = contentItem.lsWire || {};
+
+			// if no number, just return the value of
+			if (number !== undefined) {
+
+				contentItem.lsWire.totalSelectionsAllowed = number === null || number === 0
+					? null
+					: number;
+			}
+
+			// Always return the count
+			return contentItem.lsWire.totalSelectionsAllowed || null;
+		},
+
+		// ============================================================================================
+		// Helper function to set the flag to persist, or not, the selections for this session
+		// ============================================================================================
+		persistSelections: function (contentItem, persist) {
+
+			/// <summary>Set the flag of whether to persist selections for this session</summary>
+			/// <param name="contentItem" type="object">Screen contentItem of the list/table</param>
+			/// <param name="persist" type="boolean">Persist selections<br/>
+			/// undefined will retrieve the current settings</param>
+
+			contentItem.lsWire = contentItem.lsWire || {};
+			var lsw = contentItem.lsWire;
+
+			// What is our id for the cache
+			var persistId = contentItem.screen.details._modelId + "_Persist" + contentItem.name + "Selections";
+
+			if (persist !== undefined) {
+				if (persist !== myapp.options[persistId]) {
+					lsw.persistSelections = persist;
+					myapp.options[persistId] = lsw.persistSelections;
+					if (lsw.listView !== undefined)
+						updateSelected(contentItem, persist);
+				}
+			}
+
+			// Simple, return any value if exists, undefined if not 
+			return myapp.options[persistId];
+
+
+			// Update all selected items with persist
+			function updateSelected(contentItem, persist) {
+
+				var allSelected = lsWire.list.selected(contentItem);
+
+				_.forEach(allSelected, function (item) {
+					item.lsWireSelected = persist;
+				});
+
+			};
+
+
+		},
 
 	};
+
+	// ============================================================================================
+	// End of:  Functionality to enhance a ListView/TileView/TableView for multiple selects
+	// ============================================================================================
 
 
 	window.lsWire.checkbox = {
@@ -459,7 +629,8 @@ window.lsWire = window.lsWire || {};
 			///  {<br/>text: Text you want to display to the right of the checkbox<br/>
 			/// textCssClass: CSS class you want to have the text displayed as<br/>
 			/// cssClass: Parent CSS class you want for the checkbox<br/>
-			/// onChange: UDF for when the control is clicked<br/>}<br/><br/>
+			/// onChange: UDF for when the control is clicked<br/>
+			/// initialValue: boolean<br/>}<br/><br/>
 			/// UDF gets passed 2 parameters: isChecked and the eventObect
 			///</param>
 
@@ -477,6 +648,9 @@ window.lsWire = window.lsWire || {};
 			ckBox.checkedCssClassForText = options.checkedCssClassForText;
 			ckBox.uncheckedCssClassForText = options.uncheckedCssClassForText;
 			ckBox.text = options.text;
+
+			// Set the default value for the checkbox
+			if (options.initialValue !== undefined) contentItem.value = options.initialValue;
 
 			// Make sure we have a default change handler, we pass a boolean for checked/unchecked
 			ckBox.onChange = options.onChange || function (isChecked) {
@@ -524,8 +698,10 @@ window.lsWire = window.lsWire || {};
 			$checkBoxInput.on('click', function (eventObj) {
 				eventObj.stopPropagation();
 			});
+
+			// This caused issues
 			$label.on('click', function (eventObj) {
-				eventObj.stopPropagation();
+				//eventObj.stopPropagation();
 			});
 
 			// Add the UDF to the change event of the checkbox, passed values: checked or not, event obj
@@ -713,6 +889,55 @@ window.lsWire = window.lsWire || {};
 		}
 
 	};
+
+
+	window.lsWire.utility = {
+
+		// ============================================================================================
+		// Helper function find the parent that matches a tag name
+		// ============================================================================================
+		findParentByTagName: function (element, tagName) {
+
+			/// <summary>Find the parent of an element that matches a tag name</summary>
+			/// <param name="element" type="object">DOM Element</param>
+			/// <param name="tagName" type="string">Tag name to location</param>
+			/// <returns type="object">DOM element or null if not found</returns>
+
+			var foundElement = element;
+			tagName = tagName.toUpperCase();
+
+			while (foundElement && foundElement.tagName !== tagName) {
+				foundElement = foundElement.parentElement;
+			}
+
+			return foundElement;
+
+		},
+
+
+		// ============================================================================================
+		// Helper function to create an msls property.  Allows for programmatic dataBinding
+		// ============================================================================================
+		createProperty: function (name, location, initialValue) {
+
+			/// <summary>Create a property object</summary>
+			/// <param name="name" type="string">Name for the property</param>
+			/// <param name="location" type="string">Where you want the property to be stored</param>
+			/// <param name="initialValue" type="object">Initial value to give the property</param>
+			/// <returns type="object">Pointer to the property location</returns>
+
+			if (name === undefined || name === "") return null;
+
+			location = location || myapp.options;
+
+			location[name] = new msls.ContentItem('Value');
+
+			if (initialValue !== undefined)
+				location[name].value = initialValue;
+
+			return location[name];
+		}
+	}
 
 
 }());
