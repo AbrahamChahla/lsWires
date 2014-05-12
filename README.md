@@ -3,15 +3,15 @@
 
 ### Wiring up Visual Studio LightSwitch to help with your daily tasks!
 
-lsWires is a work in progress with new functionality being added all the time.  In fact we are starting a consolidation effort with all of our projects into this unified library.  As with any refactoring/consolidation efforts, this may break some current implementations.  
+lsWires is a work in progress with new functionality being added all the time.  In fact we are starting a consolidation effort with all of our projects into this unified library.  As with any refactoring/consolidation efforts, this may break some current implementations .  
 
 We are starting out with the following:
 
 **Enhancements to button controls/elements**<br/>
 lsWire.button.changeIcon
-<span style="padding-left: 30px;">Change the icon of an existing iconic button</span>
+<div style="padding-left: 30px;">Change the icon of an existing iconic button</div>
 lsWire.button.renderAsIcon
-<span style="padding-left: 30px;">Render a standard button as an iconic button<span>
+<div style="padding-left: 30px;">Render a standard button as an iconic button</div>
 
 **Enhancements to input controls/elements**<br/>
 lsWire.input.characterLimit<br/>
