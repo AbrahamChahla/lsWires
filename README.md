@@ -1,6 +1,6 @@
 # lsWires
 
-### Wiring up Visual Studio LightSwitch to help with your daily tasks!
+### Wiring up Visual Studio LightSwitch with useful stuff!
 
 lsWires is a work in progress with new functionality being added all the time.  In fact we are starting a consolidation effort with all of our projects into this unified library.  As with any refactoring/consolidation efforts, this may break some current implementations .  
 
