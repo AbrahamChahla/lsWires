@@ -34,7 +34,7 @@
 
 	For table row, remove the border when selecting a row 
    ====================================================================================== */
-.msls-tr.itg-selected-item {
+.msls-tr.lswire-selected-item {
 	border: none;
 }
 
